@@ -1,0 +1,14 @@
+type Query {
+  contents(siteId: ID!, categoryId: ID, contentTypeId: ID, locale: String, page: Int = 0, size: Int = 20): [DeliveryContent!]!
+  content(siteId: ID!, id: ID!, locale: String): DeliveryContent
+}
+
+type DeliveryContent {
+  id: ID!
+  title: String!
+  categoryId: ID!
+  contentTypeId: ID!
+  version: Int!
+  fieldValues: String!
+  updatedAt: String!
+}

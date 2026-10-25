@@ -1,0 +1,253 @@
+# ================= PowerCMS 12 核心配置（社区版数据库：H2 / PostgreSQL） =================
+# 按 spring.profiles.active 选择数据库方言，业务代码不变：
+#   db-h2         本地开发文件库（H2，PostgreSQL 兼容模式；默认，零外部依赖）
+#   db-postgres   PostgreSQL 14+（生产与回归基准）
+# 切库：POWERCMS_DB_PROFILE=db-postgres，或在外部 application.yml 设
+#   spring.profiles.active: db-postgres（原生二进制同理，见 docs/native-image.md）
+# 连接参数：POWERCMS_DB_HOST / POWERCMS_DB_PORT / POWERCMS_DB_NAME / POWERCMS_DB_USER / POWERCMS_DB_PASSWORD
+# 迁移脚本方言：db/migration 内 «token» 由 powercms-db-placeholders-*.sql.yml 提供取值，
+#   经各 profile 的 spring.config.import 注入。
+spring:
+  application:
+    name: powercms-core
+  profiles:
+    # 默认 H2 文件库（零外部依赖）；切其他库只需改 profile（环境变量或外部 application.yml）
+    active: ${POWERCMS_DB_PROFILE:db-h2}
+  # 数据源与 Hibernate 方言按 db-* profile 提供（基座不写死，切库零改码）
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 20000
+  jpa:
+    hibernate:
+      ddl-auto: ${POWERCMS_JPA_DDL_AUTO:validate}
+    open-in-view: false
+    properties:
+      hibernate:
+        # 批处理与 order_by 稳定性（跨库通用）
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
+        default_batch_fetch_size: 50
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    encoding: UTF-8
+    # «token» 占位符（五库自动切换）：前后缀避开 ${}，脚本内 FreeMarker 字面量不受影响
+    placeholder-replacement: true
+    placeholder-prefix: «
+    placeholder-suffix: »
+  web:
+    resources:
+      add-mappings: false
+  # 与 powercms.knox.max-file-size 对齐（代理上传上限），可用环境变量覆盖
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${POWERCMS_MULTIPART_MAX_FILE_SIZE:4294967296}
+      max-request-size: ${POWERCMS_MULTIPART_MAX_REQUEST_SIZE:4294967296}
+      file-size-threshold: 2MB
+
+server:
+  port: 8080
+  shutdown: graceful
+  tomcat:
+    # 超限后允许读完请求体再返回 413，否则浏览器只会看到连接被重置
+    max-swallow-size: ${POWERCMS_TOMCAT_MAX_SWALLOW:-1}
+    max-http-form-post-size: ${POWERCMS_TOMCAT_MAX_POST:4294967296}
+  servlet:
+    context-path: /
+    encoding:
+      charset: UTF-8
+      force: true
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${POWERCMS_SESSION_COOKIE_SECURE:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name},traceId=%X{traceId:-}]"
+  level:
+    root: INFO
+    com.powercms: INFO
+    org.hibernate.SQL: INFO
+    org.flywaydb: DEBUG
+  file:
+    name: ./data/logs/powercms.log
+
+powercms:
+  identity:
+    max-failed-logins: 5
+    failure-delay-ms: 50
+    http-basic-enabled: ${POWERCMS_HTTP_BASIC:true}
+    password-history-size: 3
+    password-expire-days: 0
+    reject-factory-password: ${POWERCMS_REJECT_FACTORY_PASSWORD:false}
+  search:
+    backend: ${POWERCMS_SEARCH_BACKEND:memory}
+    opensearch-uri: ${POWERCMS_OPENSEARCH_URI:http://localhost:9200}
+    connect-timeout: ${POWERCMS_SEARCH_CONNECT_TIMEOUT:2s}
+    request-timeout: ${POWERCMS_SEARCH_REQUEST_TIMEOUT:5s}
+    admin-opensearch-uri: ${POWERCMS_ADMIN_OPENSEARCH_URI:${POWERCMS_OPENSEARCH_URI:http://localhost:9200}}
+    public-opensearch-uri: ${POWERCMS_PUBLIC_OPENSEARCH_URI:${POWERCMS_OPENSEARCH_URI:http://localhost:9200}}
+    index-gate-enabled: ${POWERCMS_INDEX_GATE_ENABLED:true}
+
+  build:
+    mode: process
+    workspace-root: ${java.io.tmpdir}/powercms-builds
+    timeout-ms: 900000
+    max-output-bytes: 1073741824
+    max-files: 100000
+    fail-on-missing-assets: false
+  media:
+    storage-root: ${POWERCMS_MEDIA_STORAGE_ROOT:${java.io.tmpdir}/powercms-media}
+    # 社区版单文件上传上限（默认 100MB）；与站点媒体类型上限取小值。
+    max-file-size: ${POWERCMS_MEDIA_MAX_FILE_SIZE:104857600}
+  ssg:
+    auto-build-enabled: ${POWERCMS_SSG_AUTO_BUILD_ENABLED:false}
+    coalesce-delay-ms: ${POWERCMS_SSG_COALESCE_DELAY_MS:1000}
+  workflow:
+    notification-enabled: ${POWERCMS_WORKFLOW_NOTIFICATION_ENABLED:true}
+    schedule-scan-enabled: ${POWERCMS_WORKFLOW_SCHEDULE_SCAN_ENABLED:true}
+    schedule-scan-ms: ${POWERCMS_WORKFLOW_SCHEDULE_SCAN_MS:60000}
+  mail:
+    enabled: ${POWERCMS_MAIL_ENABLED:false}
+    host: ${POWERCMS_MAIL_HOST:localhost}
+    port: ${POWERCMS_MAIL_PORT:25}
+    username: ${POWERCMS_MAIL_USERNAME:}
+    password: ${POWERCMS_MAIL_PASSWORD:}
+    from: ${POWERCMS_MAIL_FROM:noreply@powercms.local}
+    smtp-auth: ${POWERCMS_MAIL_SMTP_AUTH:false}
+    starttls: ${POWERCMS_MAIL_STARTTLS:true}
+  publish:
+    lock-timeout-ms: 30000
+  # FR-PACKAGE-001～008：站点包导入门禁与策略
+  # 生产环境必须将 signature-policy 置为 ENFORCE（代码默认即 ENFORCE，此处显式声明便于运维发现）；
+  # 本仓库隔离栈使用 WARN，以便样例包（未签名）与安全夹具可在无签名密钥的情况下验证其余门禁。
+  site-package:
+    cms-version: ${POWERCMS_CMS_VERSION:12.0.0}
+    max-zip-size-mb: ${POWERCMS_PKG_MAX_ZIP_MB:512}
+    max-file-count: ${POWERCMS_PKG_MAX_FILE_COUNT:10000}
+    max-single-file-mb: ${POWERCMS_PKG_MAX_SINGLE_FILE_MB:50}
+    max-uncompressed-mb: ${POWERCMS_PKG_MAX_UNCOMPRESSED_MB:1024}
+    max-compression-ratio: ${POWERCMS_PKG_MAX_COMPRESSION_RATIO:100}
+    signature-policy: ${POWERCMS_PKG_SIGNATURE_POLICY:WARN}
+    consent-ttl-seconds: ${POWERCMS_PKG_CONSENT_TTL:900}
+    signing-keys:
+      dev-2026: ${POWERCMS_PKG_SIGNING_KEY_DEV:dev-only-change-this-site-package-signing-key}
+    consent-secret: ${POWERCMS_PKG_CONSENT_SECRET:dev-only-change-this-site-package-consent-secret}
+  # D6：随包全国离线库（ip2region，Apache-2.0）。去掉该配置则解析失败即拒绝。
+  access:
+    geo-db: ${POWERCMS_ACCESS_GEO_DB:classpath:geo/cn-ip.csv.gz}
+  analytics:
+    # 采集节点唯一标识（FR-STAT-107）；默认主机名+进程号
+    server-node: ${POWERCMS_ANALYTICS_SERVER_NODE:}    # LB 后可信代理层数（FR-STAT-101）：0=信任直连地址
+    trusted-proxies: ${POWERCMS_ANALYTICS_TRUSTED_PROXIES:0}
+    batch-size: ${POWERCMS_ANALYTICS_BATCH_SIZE:200}
+    flush-interval-ms: ${POWERCMS_ANALYTICS_FLUSH_INTERVAL_MS:1000}
+    queue-capacity: ${POWERCMS_ANALYTICS_QUEUE_CAPACITY:10000}
+    heartbeat-ms: ${POWERCMS_ANALYTICS_HEARTBEAT_MS:30000}
+    heartbeat-timeout-ms: ${POWERCMS_ANALYTICS_HEARTBEAT_TIMEOUT_MS:90000}
+    node-registration-enabled: ${POWERCMS_ANALYTICS_NODE_REGISTRATION:true}
+    snapshot-cron: ${POWERCMS_ANALYTICS_SNAPSHOT_CRON:0 * * * * *}
+    # 播放会话超时（NFR-STAT-006）：距**最后一次心跳**超过该时长才判 TIMEOUT；
+    # 播放中的会话只要心跳还在到就不收口，长视频不会被提前判超时、END 仍能写入真实结束原因
+    session-timeout-ms: ${POWERCMS_ANALYTICS_SESSION_TIMEOUT_MS:60000}
+    session-close-ms: ${POWERCMS_ANALYTICS_SESSION_CLOSE_MS:60000}
+    daily-aggregate-cron: ${POWERCMS_ANALYTICS_DAILY_CRON:0 0 2 * * *}
+    # 日内增量聚合（当日，站点时区）：默认每 10 分钟重算当日维度表，报表 T+0 可见
+    intraday-aggregate-cron: ${POWERCMS_ANALYTICS_INTRADAY_CRON:0 */10 * * * *}
+    job-lock-timeout-seconds: ${POWERCMS_ANALYTICS_JOB_LOCK_TIMEOUT:300}
+
+
+  preview:
+    token-secret: ${POWERCMS_PREVIEW_TOKEN_SECRET:dev-only-change-this-preview-secret-32chars}
+    allowed-host: ${POWERCMS_PREVIEW_ALLOWED_HOST:}
+    # 支持空格分隔多来源；dev 允许 Vite 默认端口及自动回退端口嵌入可视化编辑 iframe
+    admin-frame-ancestor: ${POWERCMS_PREVIEW_ADMIN_FRAME_ANCESTOR:'self' http://localhost:5173 http://localhost:5174}
+  render:
+    cache:
+      max-entries-per-region: ${POWERCMS_RENDER_CACHE_MAX_ENTRIES:512}
+      warmup-directories: /site,/scripts,/templates
+  graphql:
+    max-page-size: ${POWERCMS_GRAPHQL_MAX_PAGE_SIZE:100}
+    max-depth: ${POWERCMS_GRAPHQL_MAX_DEPTH:8}
+    max-complexity: ${POWERCMS_GRAPHQL_MAX_COMPLEXITY:100}
+  gateway:
+    rate-limit-per-minute: ${POWERCMS_GATEWAY_RATE_LIMIT_PER_MINUTE:300}
+    allowed-origins: ${POWERCMS_GATEWAY_ALLOWED_ORIGINS:}
+  webhook:
+    relay-ms: ${POWERCMS_WEBHOOK_RELAY_MS:5000}
+    dispatch-ms: ${POWERCMS_WEBHOOK_DISPATCH_MS:2000}
+    connect-timeout: ${POWERCMS_WEBHOOK_CONNECT_TIMEOUT:3s}
+  # FR-LOG 系统日志（docs/system-log-specification.md §5/§9）
+  system-log:
+    queue-capacity: ${POWERCMS_SYSTEM_LOG_QUEUE_CAPACITY:10000}
+    batch-size: ${POWERCMS_SYSTEM_LOG_BATCH_SIZE:500}
+    flush-interval: ${POWERCMS_SYSTEM_LOG_FLUSH_INTERVAL:1s}
+    runtime-retention-days: ${POWERCMS_SYSTEM_LOG_RUNTIME_RETENTION:30}
+    debug-retention-days: ${POWERCMS_SYSTEM_LOG_DEBUG_RETENTION:7}
+    access-retention-days: ${POWERCMS_SYSTEM_LOG_ACCESS_RETENTION:90}
+    auth-failure-retention-days: ${POWERCMS_SYSTEM_LOG_AUTH_RETENTION:180}
+    file-retention-days: ${POWERCMS_SYSTEM_LOG_FILE_RETENTION:180}
+    file-log-dir: ${POWERCMS_LOG_DIR:./data/logs}
+    max-query-span: ${POWERCMS_SYSTEM_LOG_MAX_QUERY_SPAN:30d}
+    query-rate-per-minute: ${POWERCMS_SYSTEM_LOG_QUERY_RATE:30}
+    export-limit: ${POWERCMS_SYSTEM_LOG_EXPORT_LIMIT:10000}
+    export-ttl: ${POWERCMS_SYSTEM_LOG_EXPORT_TTL:30m}
+    downsample-per-second: ${POWERCMS_SYSTEM_LOG_DOWNSAMPLE:50}
+    access-log-delivery-enabled: ${POWERCMS_SYSTEM_LOG_DELIVERY_ENABLED:true}
+  flyway:
+    # 启动时迁移校验因 checksum 漂移失败（占位符化后旧库必然发生）自动 repair 后重试；
+    # 见 FlywayAutoRepairMigrationStrategy。设为 false 可禁用（严格校验）。
+    repair-on-migrate: true
+
+---
+# ================= db-h2：本地开发文件库（H2，PostgreSQL 兼容模式） =================
+spring:
+  config:
+    activate:
+      on-profile: db-h2
+    import: optional:classpath:powercms-db-placeholders-ansi.sql.yml
+  datasource:
+    url: jdbc:h2:file:./data/powercms;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+---
+# ================= db-postgres：PostgreSQL 14+ =================
+spring:
+  config:
+    activate:
+      on-profile: db-postgres
+    import: optional:classpath:powercms-db-placeholders-ansi.sql.yml
+  datasource:
+    url: jdbc:postgresql://${POWERCMS_DB_HOST:192.168.0.109}:${POWERCMS_DB_PORT:5432}/${POWERCMS_DB_NAME:powercms12}
+    driver-class-name: org.postgresql.Driver
+    username: ${POWERCMS_DB_USER:postgres}
+    password: ${POWERCMS_DB_PASSWORD:postgres}
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect

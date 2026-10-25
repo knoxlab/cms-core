@@ -1,0 +1,27 @@
+{
+  "resources": {
+    "includes": [
+      { "pattern": "\\Qapplication.yml\\E" },
+      { "pattern": "powercms-db-placeholders-.*\\.sql\\.yml" },
+      { "pattern": "\\Qlogback-spring.xml\\E" },
+      { "pattern": "db/migration/.*" },
+      { "pattern": "graphql/.*" },
+      { "pattern": "geo/.*" },
+      { "pattern": "presets/.*" },
+      { "pattern": "i18n/.*" },
+      { "pattern": "static/.*" },
+      { "pattern": "admin-ui/dist/.*" },
+      { "pattern": "uve/.*" },
+      { "pattern": "META-INF/resources/webjars/.*" },
+      { "pattern": "META-INF/spring/.*" },
+      { "pattern": "META-INF/spring\\.factories" },
+      { "pattern": "META-INF/spring\\.components" },
+      { "pattern": "META-INF/services/java\\.sql\\.Driver" },
+      { "pattern": "META-INF/services/com\\.fasterxml\\.jackson\\.databind\\.Module" },
+      { "pattern": "META-INF/services/org\\.flywaydb\\.core\\.extensibility\\.Plugin" },
+      { "pattern": "META-INF/services/org\\.hibernate\\.boot\\.model\\.FunctionContributor" },
+      { "pattern": "META-INF/services/javax\\.script\\.ScriptEngineFactory" },
+      { "pattern": "META-INF/services/org\\.springframework\\..*" }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+-- FR-AI-KB-057：文档内容是否允许发往外部 AI 服务（数据不出域）
+--
+-- 需求：「文档默认不发送外部服务；仅当站点显式开启且文档被标记可外发时，
+-- 才允许调用外部 OCR/VLM 增强；外发必须审计（文档、站点、用途、时间）」。
+--
+-- 默认 false（不出域）。这是**安全默认值**：既有部署若确实在用外部 embedding，
+-- 升级后需要显式打开 —— 与"默认允许再让人去关"相比，
+-- 前者会让越界行为在升级时**立即暴露**，后者会**静默继续**。
+--
+-- 与既有 enabled / generateEnabled 等同形：非空布尔 + 默认值，
+-- 读取侧不处理 null（避免"未配置"与"显式关闭"无法区分）。
+alter table ai_site_policy add column external_doc_processing boolean not null default false;

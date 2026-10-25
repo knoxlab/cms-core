@@ -1,0 +1,6 @@
+{
+  "queries" : 29,
+  "topK" : 10,
+  "precisionAtK" : 0.34,
+  "recallAtK" : 0.85
+}

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logback 装配（FR-LOG-RT-005 / FR-LOG-ST-001 / FR-LOG-TR-004）：
+  1. 文件通道（运维兜底，NFR-LOG-013 独立故障域）：按天滚动 + gzip，保留 180 天
+     （FR-LOG-ST-004；maxHistory 与 powercms.system-log.file-retention-days 对齐）；
+  2. DB 通道（在线检索热数据）：SYSTEM_LOG_DB Appender → SystemLogPipeline 异步批量落库，
+     写入失败不影响业务线程；ApplicationReady 后由 SystemLogPipelineAttacher 桥接管道；
+  3. 控制台通道：本地开发可读。
+  图案统一含 %X{traceId}（FR-LOG-TR-004）：缺失输出 "-"，运维可在服务器上按 traceId 检索。
+  文件通道文本格式：「时间戳 [级别] [来源] [traceId] 消息」（FR-LOG-RT-005 可读格式）。
+-->
+<configuration>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%logger{36}] [traceId=%X{traceId:-}] - %msg%n</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+  <appender name="FILE_DAILY" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${POWERCMS_LOG_DIR:-./data/logs}/powercms.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- 按天滚动 + gzip（FR-LOG-ST-001/004）；保留 180 天（可经环境变量覆盖） -->
+      <fileNamePattern>${POWERCMS_LOG_DIR:-./data/logs}/powercms.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+      <maxHistory>${POWERCMS_LOG_RETENTION_DAYS:-180}</maxHistory>
+      <totalSizeCap>20GB</totalSizeCap>
+    </rollingPolicy>
+    <encoder>
+      <!-- 可读文本格式（FR-LOG-RT-005）：时间戳 [级别] [来源] [traceId] 消息 -->
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%logger{48}] [traceId=%X{traceId:-}] %msg%n%ex{100}</pattern>
+      <charset>UTF-8</charset>
+    </encoder>
+  </appender>
+
+  <!-- FR-LOG-RT-001：运行日志 DB 通道；name 供 SystemLogPipelineAttacher 定位 -->
+  <appender name="SYSTEM_LOG_DB" class="com.powercms.cms.systemlog.SystemLogAppender">
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>TRACE</level>
+    </filter>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+    <appender-ref ref="FILE_DAILY"/>
+    <appender-ref ref="SYSTEM_LOG_DB"/>
+  </root>
+</configuration>

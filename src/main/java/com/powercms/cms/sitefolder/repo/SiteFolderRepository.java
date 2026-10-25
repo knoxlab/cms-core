@@ -1,0 +1,3 @@
+package com.powercms.cms.sitefolder.repo;
+import com.powercms.cms.sitefolder.entity.SiteFolderEntity;import org.springframework.data.jpa.repository.JpaRepository;import java.util.*;
+public interface SiteFolderRepository extends JpaRepository<SiteFolderEntity,UUID>{List<SiteFolderEntity> findBySiteIdOrderBySortOrderAscTitleAsc(UUID siteId);Optional<SiteFolderEntity> findByIdAndSiteId(UUID id,UUID siteId);Optional<SiteFolderEntity> findBySiteIdAndPath(UUID siteId,String path);boolean existsBySiteIdAndPath(UUID siteId,String path);boolean existsBySiteIdAndParentIdAndName(UUID siteId,UUID parentId,String name);boolean existsBySiteIdAndParentIdIsNullAndName(UUID siteId,String name);boolean existsByParentId(UUID parentId);}

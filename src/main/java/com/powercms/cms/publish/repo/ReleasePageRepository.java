@@ -1,0 +1,1 @@
+package com.powercms.cms.publish.repo; import com.powercms.cms.publish.entity.ReleasePageEntity; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface ReleasePageRepository extends JpaRepository<ReleasePageEntity, ReleasePageEntity.Key> { List<ReleasePageEntity> findByReleaseIdOrderByRoutePathAsc(UUID releaseId); }

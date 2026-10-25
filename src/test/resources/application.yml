@@ -1,0 +1,54 @@
+# 测试专属配置：强制使用内存数据库，避免集成测试污染开发文件库（data/powercms.mv.db）。
+# 背景：MediaTypeSeedIntegrationTest 等测试不加 @Transactional（AFTER_COMMIT 回调需真实提交），
+# 曾在共享文件库中累积创建大量测试站点。隔离后测试数据随 JVM 退出销毁。
+spring:
+  application:
+    name: powercms-core
+  # 引入 ANSI 组（H2/PG/金仓共用）«token» 取值，与主配置 db-h2 同机制
+  config:
+    import: optional:classpath:powercms-db-placeholders-ansi.sql.yml
+  datasource:
+    url: jdbc:h2:mem:powercms-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # «token» 占位符机制（五库自动切换）：前后缀改为 «»，脚本内 FreeMarker 的 ${...}
+    # 字面量不再被 Flyway 解析；取值经上方 spring.config.import 引入
+    # powercms-db-placeholders-ansi.sql.yml（测试库为 H2 = ANSI 组）。
+    placeholder-replacement: true
+    placeholder-prefix: «
+    placeholder-suffix: »
+
+powercms:
+  license:
+    # 历史集成测试按无授权核撰写：关闭授权模块与版本边界，避免社区版能力位/配额
+    # 干扰 AI、Knox、MCP 等既有用例。授权状态机本身由 License*Test 直接构造验证。
+    enabled: false
+    enforce-edition-boundaries: false
+  analytics:
+    # 测试中禁用节点注册与定时任务，避免干扰断言
+    node-registration-enabled: false
+    snapshot-cron: '0 0 0 * * *'
+    daily-aggregate-cron: '0 0 3 * * *'
+    intraday-aggregate-cron: '0 0 4 * * *'
+  webapps:
+    # 测试不触发 npm 构建（保持无网络、快速），部署根指向临时目录
+    root: ${java.io.tmpdir}/powercms-webapps-test
+    build: never
+  site-package:
+    # 测试默认按开发姿态（WARN）运行，便于在不签名的情况下验证其余门禁；
+    # ENFORCE 语义由 SitePackageSignatureEnforceTest 显式覆盖验证。
+    signature-policy: WARN
+    signing-keys:
+      dev-2026: dev-only-change-this-site-package-signing-key
+    consent-secret: dev-only-change-this-site-package-consent-secret

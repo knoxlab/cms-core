@@ -1,0 +1,1 @@
+package com.powercms.cms.delivery.navigation;import org.junit.jupiter.api.Test;import static org.junit.jupiter.api.Assertions.*;class NavBreadcrumbBuilderTest{@Test void returnsPathComponents(){var x=new NavBreadcrumbBuilder().build("/docs/guide/start");assertEquals(3,x.size());assertEquals("/docs/guide",x.get(1).path());}}

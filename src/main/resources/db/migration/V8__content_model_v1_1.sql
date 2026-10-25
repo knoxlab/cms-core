@@ -1,0 +1,14 @@
+ALTER TABLE content_type ADD COLUMN object_type VARCHAR(20) NOT NULL DEFAULT 'PAGE';
+UPDATE content_type SET object_type = CASE WHEN template_type = 'COMPONENT' THEN 'COMPONENT' ELSE 'PAGE' END;
+ALTER TABLE content_type ADD COLUMN controller_path VARCHAR(500);
+ALTER TABLE content_type ADD COLUMN form_controller VARCHAR(1000);
+ALTER TABLE content_type ADD COLUMN merge_strategy VARCHAR(20) NOT NULL DEFAULT 'NONE';
+ALTER TABLE content_type ADD COLUMN parent_type_id «uuid»;
+ALTER TABLE content_type ADD CONSTRAINT fk_content_type_parent FOREIGN KEY (parent_type_id) REFERENCES content_type (id);
+ALTER TABLE content_type ADD COLUMN quick_create «bool» NOT NULL DEFAULT «lit_f»;
+ALTER TABLE content_type ADD COLUMN destination_pattern VARCHAR(500);
+ALTER TABLE content_type ADD COLUMN preview_image VARCHAR(500);
+ALTER TABLE content_type ADD COLUMN type_config «txt»;
+ALTER TABLE content_type ADD COLUMN flatten_components «bool» NOT NULL DEFAULT «lit_t»;
+CREATE TABLE content_type_lifecycle (id «uuid» PRIMARY KEY, content_type_id «uuid» NOT NULL REFERENCES content_type (id), event VARCHAR(20) NOT NULL, script_content «txt» NOT NULL, script_lang VARCHAR(20) NOT NULL DEFAULT 'GROOVY', timeout_ms INT NOT NULL DEFAULT 5000, enabled «bool» NOT NULL DEFAULT «lit_t», created_by VARCHAR(100) NOT NULL, created_at «ts» NOT NULL «def_now», updated_at «ts» NOT NULL «def_now», UNIQUE (content_type_id, event));
+CREATE INDEX idx_lifecycle_type ON content_type_lifecycle (content_type_id);

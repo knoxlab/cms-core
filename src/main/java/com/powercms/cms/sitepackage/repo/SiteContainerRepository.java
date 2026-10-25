@@ -1,0 +1,1 @@
+package com.powercms.cms.sitepackage.repo; import com.powercms.cms.sitepackage.entity.SiteContainerEntity; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface SiteContainerRepository extends JpaRepository<SiteContainerEntity, UUID> { List<SiteContainerEntity> findBySiteIdOrderByNameAsc(UUID siteId); }

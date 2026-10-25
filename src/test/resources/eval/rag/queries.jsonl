@@ -1,0 +1,29 @@
+{"query":"PowerCMS 搜索","expected":["doc-powercms-search","doc-ai-search-architecture"],"category":"fact"}
+{"query":"Embedding 管道","expected":["doc-embedding-pipeline","doc-m0-vectorization"],"category":"fact"}
+{"query":"Schema.org JSON-LD","expected":["doc-schema-org-jsonld","doc-geo-001","doc-seo-injector"],"category":"fact"}
+{"query":"匿名频控","expected":["doc-rag-010","doc-ai-quota"],"category":"fact"}
+{"query":"OAuth MCP","expected":["doc-oauth-server","doc-mcp-skeleton","doc-mcp-idempotency"],"category":"fact"}
+{"query":"混合检索权重","expected":["doc-hybrid-search-bm25-knn"],"category":"parameter"}
+{"query":"向量重建影子索引","expected":["doc-m0-vectorization","doc-embedding-version-governance"],"category":"procedure"}
+{"query":"更换 embedding 模型","expected":["doc-embedding-version-governance"],"category":"procedure"}
+{"query":"语义不可用降级","expected":["doc-hybrid-search-degrade"],"category":"procedure"}
+{"query":"Meta 描述长度","expected":["doc-seo-meta-description"],"category":"parameter"}
+{"query":"SimHash 查重","expected":["doc-seo-simhash-duplicate"],"category":"fact"}
+{"query":"结构化标记注入","expected":["doc-seo-injector","doc-schema-org-jsonld"],"category":"fact"}
+{"query":"智能标签建议","expected":["doc-smart-tag-suggest"],"category":"fact"}
+{"query":"IP 会话频控","expected":["doc-rag-010"],"category":"fact"}
+{"query":"刷新令牌","expected":["doc-oauth-server"],"category":"procedure"}
+{"query":"令牌分级审计","expected":["doc-mcp-skeleton"],"category":"fact"}
+{"query":"幂等键写操作","expected":["doc-mcp-idempotency"],"category":"fact"}
+{"query":"审批凭据","expected":["doc-mcp-approval-ticket"],"category":"fact"}
+{"query":"Agent 检索工具","expected":["doc-hybrid-search-mcp-tool"],"category":"fact"}
+{"query":"越权不可见","expected":["doc-object-acl-groups"],"category":"fact"}
+{"query":"内容可信度评分","expected":["doc-content-credibility"],"category":"parameter"}
+{"query":"翻译分块结构保留","expected":["doc-ai-translation"],"category":"procedure"}
+{"query":"建议人工确认","expected":["doc-ai-suggestion-staging"],"category":"procedure"}
+{"query":"检索评测指标","expected":["doc-bm25-rag-evaluator"],"category":"fact"}
+{"query":"向量全量重建如何与 Embedding 模型版本治理衔接，重建期间旧版本向量是否继续服务","expected":["doc-m0-vectorization","doc-embedding-version-governance"],"category":"cross_page"}
+{"query":"混合检索里关键词与向量两类分数各自的可配置权重默认值是多少","expected":["doc-hybrid-search-bm25-knn"],"category":"table"}
+{"query":"这份文档里完全没有提到的量子纠缠退相干参数是多少","expected":[],"category":"no_answer"}
+{"query":"知识库里是否存在关于星际航行推进剂配比的规定","expected":[],"category":"no_answer"}
+{"query":"文档解析服务支持哪些并不存在的解析引擎","expected":[],"category":"no_answer"}

@@ -1,0 +1,3 @@
+package com.powercms.cms.sitepackage;
+import com.fasterxml.jackson.databind.ObjectMapper; import org.junit.jupiter.api.Test; import java.util.UUID; import static org.junit.jupiter.api.Assertions.*; import static org.mockito.Mockito.*;
+class CssClassServiceTest { @Test void normalizesOnlySafeClasses(){var s=new CssClassService(mock(TemplateService.class),new ObjectMapper());assertEquals("hero-1 valid",s.normalize("hero-1 _bad valid bad.class"));} @Test void invalidJsonWarnsWithoutThrowing(){var t=mock(TemplateService.class);when(t.readFileContent(any(),any())).thenReturn("not-json");var r=new CssClassService(t,new ObjectMapper()).load(UUID.randomUUID(),false);assertTrue(r.classes().isEmpty());assertFalse(r.warnings().isEmpty());} }

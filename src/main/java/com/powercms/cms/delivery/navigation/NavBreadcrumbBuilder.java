@@ -1,0 +1,2 @@
+package com.powercms.cms.delivery.navigation; import org.springframework.stereotype.Service; import java.util.*;
+@Service public class NavBreadcrumbBuilder { public record Component(String label,String path){} public List<Component> build(String route){if(route==null||route.isBlank()||"/".equals(route))return List.of();StringBuilder p=new StringBuilder();List<Component> out=new ArrayList<>();for(String s:route.split("/")){if(s.isBlank())continue;p.append('/').append(s);out.add(new Component(s,p.toString()));}return List.copyOf(out);}}
