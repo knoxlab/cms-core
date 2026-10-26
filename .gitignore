@@ -1,5 +1,7 @@
 target/
 data/
+# 站点应用发布/构建产物（WebappsService 落盘），非源码
+webapps/
 *.class
 *.log
 .idea/
