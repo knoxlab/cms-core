@@ -80,6 +80,14 @@ class SiteDeletionServiceTest {
     @AfterEach
     void cleanUp() {
         for (UUID id : createdSites) {
+            // 失败场景下库里仍留父子层级：先按作用域置空自引用列，
+            // 否则清理阶段的批量 DELETE 也会撞 H2 的逐行立即外键检查，掩盖真正的失败原因
+            jdbc.update("update content_type set parent_type_id = null, copied_from_type_id = null "
+                + "where site_id = ? and (parent_type_id is not null or copied_from_type_id is not null)", id);
+            jdbc.update("update field_definition set parent_id = null where "
+                + "content_type_id in (select id from content_type where site_id = ?) "
+                + "and parent_id is not null", id);
+            jdbc.update("update category set parent_id = null where site_id = ? and parent_id is not null", id);
             jdbc.update("delete from sys_user where home_site_id = ?", id);
             jdbc.update("delete from site_theme_share where consumer_site_id = ?", id);
             jdbc.update("delete from site_theme_share where theme_id in "
@@ -186,6 +194,46 @@ class SiteDeletionServiceTest {
         assertThat(jdbc.queryForObject(
             "select count(*) from audit_event where action = 'SITE_DELETE' and object_id = ?",
             Integer.class, siteId.toString())).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("带自引用层级的站点（父子类型/父子栏目/父子字段）删除成功——同条 DELETE 内父子互删的回归")
+    void deletesSiteWithSelfReferencingHierarchy() {
+        UUID siteId = newSite(SiteEntity.STATUS_ARCHIVED);
+        UUID parentType = UUID.randomUUID();
+        UUID childType = UUID.randomUUID();
+        UUID parentCat = UUID.randomUUID();
+        UUID childCat = UUID.randomUUID();
+        UUID parentField = UUID.randomUUID();
+        UUID childField = UUID.randomUUID();
+
+        // 父子内容类型：parent_type_id + copied_from_type_id 均自引用 content_type(id)
+        jdbc.update("insert into content_type (id, site_id, code, name) values (?,?,?,?)",
+            parentType, siteId, "group", "父类型");
+        jdbc.update("insert into content_type "
+                + "(id, site_id, code, name, parent_type_id, copied_from_type_id) values (?,?,?,?,?,?)",
+            childType, siteId, "article", "子类型", parentType, parentType);
+        // 父子栏目：category.parent_id 自引用 category(id)
+        jdbc.update("insert into category (id, site_id, name) values (?,?,?)",
+            parentCat, siteId, "父栏目");
+        jdbc.update("insert into category (id, site_id, name, parent_id) values (?,?,?,?)",
+            childCat, siteId, "子栏目", parentCat);
+        // 父子字段（现场复现数据）：field_definition.parent_id 自引用 field_definition(id)
+        jdbc.update("insert into field_definition "
+                + "(id, content_type_id, code, name, field_type) values (?,?,?,?,?)",
+            parentField, childType, "group", "分组", "STRING");
+        jdbc.update("insert into field_definition "
+                + "(id, content_type_id, code, name, field_type, parent_id) values (?,?,?,?,?,?)",
+            childField, childType, "title", "标题", "STRING", parentField);
+
+        // H2 逐行立即外键检查：不先置空自引用列，DELETE 到 field_definition/category 即失败
+        service.delete(siteId);
+
+        assertThat(siteRepo.findById(siteId)).isEmpty();
+        assertThat(countById("content_type", childType)).isZero();
+        assertThat(countById("category", childCat)).isZero();
+        assertThat(countById("field_definition", parentField)).isZero();
+        assertThat(countById("field_definition", childField)).isZero();
     }
 
     // ---------------- 被引用：先提示、后阻断 ----------------

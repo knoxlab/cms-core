@@ -26,9 +26,21 @@ import java.util.Set;
  */
 public final class SitePurgePlanner {
 
-    /** 互引环的解法：删除前先在本站范围内把子表的这些列置空（列必须可空）。 */
+    /**
+     * 解环/自引用置空：删除前先在站点作用域内把「同表互指」的列置空。
+     * 两类：互引环（agent_task.message_id ↔ agent_message.task_id）与自引用 FK（parent_id → id）。
+     * 为何必须置空：PostgreSQL 的外键检查在语句结束时才触发，同一条 DELETE 内父子行互删可行；
+     * H2 则逐行立即检查——子行尚在时删父行即报 violations foreign key，故不能依赖方言差异。
+     * 列必须允许 NULL；置空语句复用删除谓词（站点表 site_id = ?，卫星表按引用边推导作用域）。
+     */
     public static final Map<String, List<String>> CYCLE_BREAKERS = Map.of(
-        "agent_task", List.of("message_id"));
+        "agent_task", List.of("message_id"),
+        "category", List.of("parent_id"),
+        "content_type", List.of("parent_type_id", "copied_from_type_id"),
+        "deployment", List.of("previous_deployment_id"),
+        "field_definition", List.of("parent_id"),
+        "site_folder", List.of("parent_id"),
+        "site_theme", List.of("parent_theme_id"));
 
     /** 计划结果：先执行置空语句，再按序执行删除语句。全部使用同一参数 {@code siteId}。 */
     public record SitePurgePlan(List<String> breakStatements, List<String> deleteStatements) {}
@@ -108,14 +120,17 @@ public final class SitePurgePlanner {
         Map<String, String> predicates = resolvePredicates(scope, withSiteId);
         List<String> order = topologicalOrder(scope);
 
-        // 1) 解环置空
+        // 1) 解环/自引用置空（谓词与删除语句同源——卫星表无 site_id 列，须按引用边推导作用域）
         List<String> breakStatements = new ArrayList<>();
         for (Map.Entry<String, List<String>> breaker : CYCLE_BREAKERS.entrySet()) {
-            if (!scope.contains(breaker.getKey())) continue;
+            String table = breaker.getKey();
+            if (!scope.contains(table)) continue;
+            String predicate = predicates.get(table);
+            require(predicate != null, "解环表 " + table + " 无法生成作用域谓词（卫星表需有引用边）");
             for (String column : breaker.getValue()) {
                 require(SitePurgeCatalog.isSafeIdentifier(column), "非法置空列名: " + column);
-                breakStatements.add("UPDATE " + breaker.getKey() + " SET " + column
-                    + " = NULL WHERE site_id = ? AND " + column + " IS NOT NULL");
+                breakStatements.add("UPDATE " + table + " SET " + column
+                    + " = NULL WHERE " + predicate + " AND " + column + " IS NOT NULL");
             }
         }
 

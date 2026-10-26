@@ -343,6 +343,49 @@ class SitePurgeCatalogCoverageTest {
     }
 
     @Test
+    @DisplayName("迁移里的自引用外键（同表父子）全部登记为解环置空列——否则同条 DELETE 撞立即外键检查")
+    void selfReferencingForeignKeysAreCycleBroken() {
+        Set<String> scopeChildren = new HashSet<>();               // 卫星表 = EDGES 里出现过的子表
+        SitePurgeCatalog.EDGES.forEach(e -> scopeChildren.add(e.child()));
+        Set<String> breakers = new HashSet<>();
+        SitePurgePlanner.CYCLE_BREAKERS.forEach((t, cols) ->
+            cols.forEach(c -> breakers.add(t + "#" + c)));
+
+        Set<String> selfRefs = new HashSet<>();
+        for (Fk fk : migrationFks) {
+            if (fk.child().equals(fk.parent())) selfRefs.add(fk.child() + "." + fk.column());
+        }
+        assertThat(selfRefs)
+            .as("解析冒烟：迁移里的自引用外键必须被识别出来")
+            .contains("field_definition.parent_id", "category.parent_id",
+                "content_type.parent_type_id", "site_theme.parent_theme_id");
+
+        Set<String> missing = new HashSet<>();
+        for (String selfRef : selfRefs) {
+            int dot = selfRef.indexOf('.');
+            String table = selfRef.substring(0, dot);
+            if (!SitePurgeCatalog.SITE_TABLES.contains(table) && !scopeChildren.contains(table)) {
+                continue;                                          // 全局表不参与站点删除
+            }
+            if (!breakers.contains(selfRef.replace('.', '#'))) missing.add(selfRef);
+        }
+        assertThat(missing)
+            .as("自引用外键未登记 CYCLE_BREAKERS → H2 逐行外键检查下同条 DELETE 内父子互删即失败"
+                + "（PostgreSQL 恰好能过，不能依赖方言差异）")
+            .isEmpty();
+
+        // 置空语句复用删除谓词：卫星表按引用边取作用域，站点表用 site_id
+        SitePurgePlanner.SitePurgePlan plan = new SitePurgePlanner(true).plan();
+        assertThat(plan.breakStatements())
+            .as("field_definition 无 site_id 列，置空必须按 content_type 边限定作用域")
+            .anyMatch(s -> s.startsWith(
+                "UPDATE field_definition SET parent_id = NULL WHERE content_type_id IN (SELECT id FROM content_type WHERE site_id = ?)"));
+        assertThat(plan.breakStatements())
+            .anyMatch(s -> s.startsWith("UPDATE category SET parent_id = NULL WHERE site_id = ?"))
+            .anyMatch(s -> s.startsWith("UPDATE content_type SET parent_type_id = NULL WHERE site_id = ?"));
+    }
+
+    @Test
     @DisplayName("指向 site(id) 的列只有三类：site_id 列 / 阻断项 / 站点引用列——全部显式登记")
     void siteIdReferencingColumnsAreClassified() {
         Set<String> known = new HashSet<>();

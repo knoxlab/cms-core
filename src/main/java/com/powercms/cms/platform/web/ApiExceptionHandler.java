@@ -210,6 +210,10 @@ public class ApiExceptionHandler {
             ? ex.getMostSpecificCause().getMessage()
             : ex.getMessage();
         if (message != null && message.contains("FOREIGN KEY") && message.contains("site_id")) {
+            // 站点行缺失类外键失败按 404 处理；必须留痕——否则任何提到 site_id 的外键失败
+            // （例如删除计划撞外键）都会被静默映射成「站点不存在」，现场无从定位
+            log.warn("外键约束失败按『站点不存在』返回404 traceId={} cause={}",
+                currentTraceId(), message);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiError.of(ErrorCodes.NOT_FOUND,
                     messages.get("error.site.missing.reselect"), currentTraceId()));

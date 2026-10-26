@@ -48,14 +48,10 @@ class SiteController {
     }
 
     /**
-     * 新建站点。授权维度上是**规模**而非能力：配额 409 {@code LICENSE_QUOTA_EXCEEDED}。
-     *
-     * <p>此处走规格 §7-1 的统一中间件入口做 Controller 层快速失败（§1.4 规则 4：门禁在服务端能力层）；
-     * {@link SiteService#create} 内部仍以**实时 repo 计数**再断言一次（权威口径），
-     * 因为配额水位走 {@code powercms.license.usage-cache-ttl} 缓存，两者可能有 ≤TTL 的窗口差。</p>
+     * 新建站点。社区版无授权配额层（{@code entitlementGate} 为企业版组件），
+     * 仅要求系统管理员 + 交互式会话。
      */
-    @PreAuthorize("hasRole('system-admin') and @interactiveSessionGuard.requireInteractive(authentication)"
-        + " and @entitlementGate.requireQuota(authentication, null, 'sites', 1)")
+    @PreAuthorize("hasRole('system-admin') and @interactiveSessionGuard.requireInteractive(authentication)")
     @PostMapping
     ResponseEntity<SiteResponse> create(@RequestAttribute(value = "organizationId") UUID orgId,
                                         @Valid @RequestBody CreateSiteRequest req,
