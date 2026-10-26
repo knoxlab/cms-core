@@ -24,7 +24,7 @@ import java.util.UUID;
 
 /**
  * 社区版本地盘媒体库：二进制写入 {@code powercms.media.storage-root}，资产 {@code source=LOCAL}、
- * 状态 {@code ACTIVE}（无转码）。视频只存原件，播放由 {@link LocalMediaController} 以 Range 直出。
+ * 状态 {@code ACTIVE}（无转码）。视频只存原件，播放由 {@link com.powercms.cms.media.web.LocalMediaController} 以 Range 直出。
  */
 @Service
 public class LocalMediaStorage {

@@ -1,5 +1,6 @@
-package com.powercms.cms.media;
+package com.powercms.cms.media.web;
 
+import com.powercms.cms.media.LocalMediaStorage;
 import com.powercms.cms.media.entity.MediaAssetEntity;
 import com.powercms.cms.media.repo.MediaAssetRepository;
 import com.powercms.common.error.BusinessException;
